@@ -42,11 +42,16 @@ for(i in 1:ncol(C)){
 # u
 # M
 # oos
+# post_sample
 u=data$u_arma_garch
 oos=5*12
 M=100
+post_sample=20 # cannot be larger than M
 
 ###
+
+
+if (post_sample>M)stop('posterior sample larger than n.iter. M')
 nn     <- dim(u)[1]
 nnis   <- nn-oos
 dm     <- dim(u)[2]
@@ -81,9 +86,9 @@ for(m in 1:(M+bi)){
     Qnew  = Qold
 
     for(t in 2:nnis){
-        Qnew[,,t]   <- S*(1-anew-bnew)+anew*(data[t-1,]%*%t(data[t-1,]))+bnew*Qnew[,,(t-1)]
+        Qnew[,,t]   <- S*(1-anew-bnew)+anew*(x_is[t-1,]%*%t(x_is[t-1,]))+bnew*Qnew[,,(t-1)]
         R[,,t]   <- diag(diag(Qnew[,,t])^{-1/2})%*%Qnew[,,t]%*%diag(diag(Qnew[,,t])^{-1/2})
-        llnew[t] <- mvtnorm::dmvnorm(data[t,], rep(0,dm), R[,,t], log=T)
+        llnew[t] <- mvtnorm::dmvnorm(x_is[t,], rep(0,dm), R[,,t], log=T)
     }
 
     if((sum(llnew)-sum(llold)+
@@ -100,15 +105,38 @@ for(m in 1:(M+bi)){
     }
 
     resdcc[m,] <- c(aold,bold)
-    Qpred[[m]] <- S*(1-aold-bold)+aold*(data[nnis,]%*%t(data[nnis,]))+bold*Qold[,,nnis]
+    Qpred[[m]] <- S*(1-aold-bold)+aold*(x_is[nnis,]%*%t(x_is[nnis,]))+bold*Qold[,,nnis]
     Vpred[[m]] <- diag(diag(Qpred[[m]])^{-1/2})%*%Qpred[[m]]%*%diag(diag(Qpred[[m]])^{-1/2})
 
     # if(m>bi){save(Qold,file=paste('temp/dcc_',m-bi,'.Rdata',sep=''))}
 }
 
-res = list(Vpred[(bi+1):(bi+M)],Qpred[(bi+1):(bi+M)],resdcc[(bi+1):(bi+M),],accdcc[(bi+1):(bi+M)])
-names(res) = c('Vpred','Qpred','resdcc','accdcc')
+ind_m=round(seq(1,M,length=post_sample))
+
+res = list(Vpred[ind_m+bi],Qpred[ind_m+bi],resdcc[(ind_m+bi),],accdcc[ind_m+bi],
+           oos,x_all)
+names(res) = c('Vpred','Qpred','resdcc','accdcc','oos','X')
 save(res,file=paste('temp/results_scalar_dcc.Rdata',sep=''))
+
+## Roll and predict the correlations
+
+
+load('temp/results_scalar_dcc.Rdata')
+
+nn      = dim(res$X)[1]
+dm      = dim(res$X)[2]
+oos
+
+
+Q_all=R_all=array(NA,c(dm, dm, nn))
+Q_all[,,1] <- cor(x_is)
+R_all[,,1] <- diag(diag(Q_all[,,1])^{-1/2})%*%Q_all[,,1]%*%diag(diag(Q_all[,,1])^{-1/2})
+
+for(t in 2:nnis){
+    Qold[,,t]   <- S*(1-aold-bold)+aold*(x_is[t-1,]%*%t(x_is[t-1,]))+bold*Qold[,,(t-1)]
+    R[,,t]   <- diag(diag(Qold[,,t])^{-1/2})%*%Qold[,,t]%*%diag(diag(Qold[,,t])^{-1/2})
+    llold[t] <- mvtnorm::dmvnorm(x_is[t,], rep(0,dm), R[,,t], log=T)
+}
 
 
 
