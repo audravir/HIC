@@ -80,7 +80,7 @@ for(m in 1:(M+bi)){
     llnew <- rep(0,nnis)
     Qnew  = Qold
 
-    for(t in 2:TT){
+    for(t in 2:nnis){
         Qnew[,,t]   <- S*(1-anew-bnew)+anew*(data[t-1,]%*%t(data[t-1,]))+bnew*Qnew[,,(t-1)]
         R[,,t]   <- diag(diag(Qnew[,,t])^{-1/2})%*%Qnew[,,t]%*%diag(diag(Qnew[,,t])^{-1/2})
         llnew[t] <- mvtnorm::dmvnorm(data[t,], rep(0,dm), R[,,t], log=T)
@@ -100,7 +100,7 @@ for(m in 1:(M+bi)){
     }
 
     resdcc[m,] <- c(aold,bold)
-    Qpred[[m]] <- S*(1-aold-bold)+aold*(data[TT,]%*%t(data[TT,]))+bold*Qold[,,TT]
+    Qpred[[m]] <- S*(1-aold-bold)+aold*(data[nnis,]%*%t(data[nnis,]))+bold*Qold[,,nnis]
     Vpred[[m]] <- diag(diag(Qpred[[m]])^{-1/2})%*%Qpred[[m]]%*%diag(diag(Qpred[[m]])^{-1/2})
 
     # if(m>bi){save(Qold,file=paste('temp/dcc_',m-bi,'.Rdata',sep=''))}
