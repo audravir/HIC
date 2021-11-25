@@ -1,6 +1,4 @@
 rm(list=ls(all=TRUE))
-load('data.Rdata')
-
 load('data_u.Rdata')
 
 nn      = dim(data$ret)[1]
@@ -113,31 +111,37 @@ for(m in 1:(M+bi)){
 
 ind_m=round(seq(1,M,length=post_sample))
 
-res = list(Vpred[ind_m+bi],Qpred[ind_m+bi],resdcc[(ind_m+bi),],accdcc[ind_m+bi],
-           oos,x_all)
-names(res) = c('Vpred','Qpred','resdcc','accdcc','oos','X')
+res = list(resdcc[(ind_m+bi),],accdcc[ind_m+bi],oos,x_all)
+names(res) = c('resdcc','accdcc','oos','X')
 save(res,file=paste('temp/results_scalar_dcc.Rdata',sep=''))
 
 ## Roll and predict the correlations
 
+rm(list=ls(all=TRUE))
 
 load('temp/results_scalar_dcc.Rdata')
 
 nn      = dim(res$X)[1]
 dm      = dim(res$X)[2]
-oos
+oos     = res$oos
+x_is    = res$X[1:(nn-oos),]
+miter   = length(res$accdcc)
+
+Q_all=R_all=array(NA,c(dm, dm, nn,miter))
+Q_all[,,1,] <- cor(x_is)
+R_all[,,1,] <- diag(diag(Q_all[,,1,1])^{-1/2})%*%Q_all[,,1,1]%*%diag(diag(Q_all[,,1,1])^{-1/2})
+S          <- cov(x_is)
 
 
-Q_all=R_all=array(NA,c(dm, dm, nn))
-Q_all[,,1] <- cor(x_is)
-R_all[,,1] <- diag(diag(Q_all[,,1])^{-1/2})%*%Q_all[,,1]%*%diag(diag(Q_all[,,1])^{-1/2})
+a = res$resdcc[,1]
+b = res$resdcc[,2]
 
-for(t in 2:nnis){
-    Qold[,,t]   <- S*(1-aold-bold)+aold*(x_is[t-1,]%*%t(x_is[t-1,]))+bold*Qold[,,(t-1)]
-    R[,,t]   <- diag(diag(Qold[,,t])^{-1/2})%*%Qold[,,t]%*%diag(diag(Qold[,,t])^{-1/2})
-    llold[t] <- mvtnorm::dmvnorm(x_is[t,], rep(0,dm), R[,,t], log=T)
+for(m in 1:miter){
+    for(t in 2:nn){
+        Q_all[,,t,m]   <- S*(1-a[m]-b[m])+a[m]*(res$X[t-1,]%*%t(res$X[t-1,]))+b[m]*Q_all[,,(t-1),m]
+        R_all[,,t,m]   <- diag(diag(Q_all[,,t,m])^{-1/2})%*%Q_all[,,t,m]%*%diag(diag(Q_all[,,t,m])^{-1/2})
+    }
 }
-
 
 
 
