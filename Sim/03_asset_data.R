@@ -132,6 +132,11 @@ garch_res = list(coef=coef,ts=ts,resid=resid_garch)
 apply(garch_res$resid ,2,mean)
 apply(garch_res$resid ,2,sd)
 
+
+
+
+
+
 ##--------------------
 ## Using RV
 ##--------------------
@@ -259,8 +264,21 @@ Sbar   = Reduce('+',Sig)/length(Sig)
 
 C = combinat::combn(1:dm,2)
 
-pdf(paste('RCor_',freq,'.pdf',sep=''),width=20,height=10)
-par(mfrow=c(4,ceiling(ncol(C)/4)))
+RCroll1 = RCroll2 = matrix(NA,ncol=ncol(C),nrow=nnw)
+
+for(i in 1:ncol(C)){
+    for(t in 2:nnw){
+        RCroll1[t,i] = cor(ret_w[max(c(1,t-20)):t,C[1,i]],
+                           ret_w[max(c(1,t-20)):t,C[2,i]])
+        RCroll2[t,i] = cor(u_garch_N[max(c(1,t-20)):t,C[1,i]],
+                           u_garch_N[max(c(1,t-20)):t,C[2,i]])
+    }
+}
+
+
+
+#pdf(paste('RCor_',freq,'.pdf',sep=''),width=20,height=10)
+par(mfrow=c(3,ceiling(ncol(C)/3)))
 for(i in 1:ncol(C)){
     plot(indw, RCor[C[1,i],C[2,i],],type='l',ylim=c(-1.2,1.2),
          main=c(assets[C[1,i]],assets[C[2,i]]),ylab='',
@@ -270,8 +288,10 @@ for(i in 1:ncol(C)){
                          align = c("center")),col=2,lwd=2)
     abline(h=0,lwd=2,lty=2,col='gray80')
     abline(h=Sbar[C[1,i],C[2,i]],lwd=2,col=3)
+    lines(indw,RCroll1[,i],col=4)
+    lines(indw,RCroll2[,i],col=6)
 }
-dev.off()
+#dev.off()
 
 u_garch_N = pnorm(garch_res$resid)
 u_RV_N    = pnorm(RV_res$resid)
@@ -313,5 +333,5 @@ data = list(Date=indw,RCor=RCor,lret=ret_w,
             u_RV_e=u_RV_e,u_RV_N=u_RV_N)
 names(data)
 
-save(data,file=paste('data_',freq,'.Rdata',sep=''))
+#save(data,file=paste('data_',freq,'.Rdata',sep=''))
 
