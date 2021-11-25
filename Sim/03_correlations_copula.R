@@ -43,10 +43,10 @@ for(i in 1:ncol(C)){
 # post_sample
 u=data$u_arma_garch
 oos=5*12
-M=100
-post_sample=20 # cannot be larger than M
+M=1000
+post_sample=500 # cannot be larger than M
 
-###
+
 
 
 if (post_sample>M)stop('posterior sample larger than n.iter. M')
@@ -60,8 +60,8 @@ Qold   <- array(NA,c(dm, dm, nnis))
 R      <- array(NA,c(dm, dm, nnis))
 Qold[,,1] <- cor(x_is)
 R[,,1] <- diag(diag(Qold[,,1])^{-1/2})%*%Qold[,,1]%*%diag(diag(Qold[,,1])^{-1/2})
-aold   <- 0.01
-bold   <- 0.95
+aold   <- 0.1
+bold   <- 0.80
 llold  <- rep(0,nnis)
 resdcc <- matrix(NA,ncol=2,nrow=(bi+M))
 accdcc <- rep(0,bi+M)
@@ -76,7 +76,7 @@ for(t in 2:nnis){
 
 for(m in 1:(M+bi)){
 
-    parnew = rnorm(2,c(aold,bold),0.005) # changed from 0.0005
+    parnew = rnorm(2,c(aold,bold),0.01) # changed from 0.0005
 
     anew  <- parnew[1]
     bnew  <- parnew[2]
@@ -132,7 +132,6 @@ Q_all[,,1,] <- cor(x_is)
 R_all[,,1,] <- diag(diag(Q_all[,,1,1])^{-1/2})%*%Q_all[,,1,1]%*%diag(diag(Q_all[,,1,1])^{-1/2})
 S          <- cov(x_is)
 
-
 a = res$resdcc[,1]
 b = res$resdcc[,2]
 
@@ -142,6 +141,40 @@ for(m in 1:miter){
         R_all[,,t,m]   <- diag(diag(Q_all[,,t,m])^{-1/2})%*%Q_all[,,t,m]%*%diag(diag(Q_all[,,t,m])^{-1/2})
     }
 }
+rm(Q_all)
 
+
+
+par(mfrow=c(2,1))
+plot(res$resdcc[,1],type='l',main=mean(res$accdcc),ylim=c(0,0.2))
+abline(h=c(0,0.2))
+plot(res$resdcc[,2],type='l',main=mean(res$accdcc),ylim=c(0.7,1))
+abline(h=c(0.7,1))
+
+R_m= apply(R_all, c(1,2,3),median)
+
+load('data_u.Rdata')
+C       = combinat::combn(1:dm,2)
+RCroll1 = RCroll2 = matrix(NA,ncol=ncol(C),nrow=nn)
+
+for(i in 1:ncol(C)){
+    for(t in 2:nn){
+        RCroll1[t,i] = cor(data$u_arma_garch[max(c(1,t-11)):t,C[1,i]],
+                           data$u_arma_garch[max(c(1,t-11)):t,C[2,i]])
+        RCroll2[t,i] = cor(data$u_arma_rv[max(c(1,t-11)):t,C[1,i]],
+                           data$u_arma_rv[max(c(1,t-11)):t,C[2,i]])
+    }
+}
+
+
+
+par(mfrow=c(3,ceiling(ncol(C)/3)))
+for(i in 1:ncol(C)){
+    plot(RCroll1[,i],type='l',ylim=c(-1,1),main=cor(RCroll1[-1,i],data$RCor[C[1,i],C[2,i],2:nn]))
+    lines(RCroll2[,i],col=2)
+    lines(data$RCor[C[1,i],C[2,i],],col=4)
+    abline(h=c(-1,0,1))
+    lines(R_m[C[1,i],C[2,i],],col=3,lwd=2)
+}
 
 
